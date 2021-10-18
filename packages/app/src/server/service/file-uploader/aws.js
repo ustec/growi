@@ -230,5 +230,39 @@ module.exports = function(crowi) {
     return lib.doCheckLimit(uploadFileSize, maxFileSize, totalLimit);
   };
 
+
+  // method for INVESTIGATION
+  lib.INVxMultiPartUpload = async() => {
+    if (!this.getIsReadable()) {
+      throw new Error('AWS is not configured.');
+    }
+
+    const s3 = S3Factory();
+
+    let uploadId;
+    try {
+      s3.createMultipartUpload((err, data) => {
+        if (err != null) {
+          throw err;
+        }
+
+        console.log('Get uploadId from this data:', data);
+        s3.completeMultipartUpload((err, data) => {
+          if (err != null) {
+            throw err;
+          }
+
+          console.log('Multipart upload has completed successfully:', data);
+        });
+      });
+    }
+    catch (err) {
+      logger.error('Error occurred while createMultipartUpload:', err);
+      throw err;
+    }
+
+    return uploadId;
+  };
+
   return lib;
 };

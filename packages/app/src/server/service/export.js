@@ -444,9 +444,9 @@ class ExportService {
 
         callback();
       },
-      final(callback) {
+      async final(callback) {
         // TODO: multi-part upload instead of calling finalize() 78070
-        archive.finalize();
+        await this.crowi.fileUploadService.INVxMultiPartUpload();
         callback();
       },
     });
