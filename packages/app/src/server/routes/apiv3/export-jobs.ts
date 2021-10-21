@@ -4,6 +4,7 @@ import loggerFactory from '~/utils/logger';
 const logger = loggerFactory('growi:routes:apiv3:export-job');
 
 const express = require('express');
+const mongoose = require('mongoose');
 const ErrorV3 = require('../../models/vo/error-apiv3');
 
 const router = express.Router();
@@ -47,6 +48,12 @@ module.exports = (crowi) => {
    */
   router.post('/', accessTokenParser, loginRequired, csrf, async(req, res) => {
     const { path: basePagePath } = req.body;
+
+    // when s3 or gcs is ready
+    // NOTE: it allows only one multipart upload for now
+    const MultipartUploadInfo = mongoose.model('MultipartUploadInfo');
+    const count = await MultipartUploadInfo.countDocuments();
+    if (count !== 0) throw Error('Another multipart upload job is still running. Try again when the job is over.');
 
     try {
       await crowi.exportService.bulkExportWithBasePagePath(basePagePath);

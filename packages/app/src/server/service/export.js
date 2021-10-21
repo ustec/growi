@@ -2,6 +2,7 @@ import { pathUtils } from 'growi-commons';
 import streamToPromise from 'stream-to-promise';
 import loggerFactory from '~/utils/logger';
 import { toArrayIfNot } from '~/utils/array-utils';
+import MultipartUploadInfo from '~/server/models/multipart-upload-info';
 
 import ConfigLoader from './config-loader';
 
@@ -373,7 +374,7 @@ class ExportService {
     return readable;
   }
 
-  getPageReadableStream(basePagePath) {
+  getPageReadableStream(basePagePath, offset) {
     const Page = this.crowi.model('Page');
     const { PageQueryBuilder } = Page;
 
@@ -383,9 +384,11 @@ class ExportService {
 
     return builder
       .query
+      .skip(offset)
+      .limit(300)
       .populate('revision')
       .lean()
-      .cursor({ batchSize: 100 }); // get stream
+      .cursor(); // get stream
   }
 
   setUpArchiver() {
@@ -412,48 +415,120 @@ class ExportService {
     return archive;
   }
 
-  // TODO: do multi-part upload instead of exporting to local file system 78070
+  // TODO: implement a job feature
   async bulkExportWithBasePagePath(basePagePath) {
+    const self = this;
+
+    // create MUI and getPageReadableStream(100) -> CreateMultipartUpload(() => { upload the first part })
     // get pages with descendants as stream
-    const pageReadableStream = this.getPageReadableStream(basePagePath);
+    const pageReadableStream = this.getPageReadableStream(basePagePath, 0);
 
-    // set up archiver
-    const archive = this.setUpArchiver();
-
-    // read from pageReadableStream, then append each page to archiver
-    // pageReadableStream.pipe(pagesWritable) below will pipe the stream
-    const pagesWritable = new Writable({
-      objectMode: true,
-      async write(page, encoding, callback) {
-        try {
-          const revision = page.revision;
-
-          let markdownBody = 'This page does not have any content.';
-          if (revision != null) {
-            markdownBody = revision.body;
-          }
-
-          // write to zip
-          const pathNormalized = pathUtils.normalizePath(page.path);
-          archive.append(markdownBody, { name: `${pathNormalized}.md` });
-        }
-        catch (err) {
-          logger.error('Error occurred while converting data to readable: ', err);
+    try {
+      // FIRST CALLBACK
+      await self.crowi.fileUploadService.INVxCreateMultiPartUpload(async(err, data) => {
+        if (err != null) {
           throw err;
         }
 
-        callback();
-      },
-      async final(callback) {
-        // TODO: multi-part upload instead of calling finalize() 78070
-        await this.crowi.fileUploadService.INVxMultiPartUpload();
-        callback();
-      },
-    });
+        // get UploadId and Key and save
+        const { Key: key, UploadId: uploadId } = data;
+        const mui = await MultipartUploadInfo.create({ key, uploadId });
 
-    pageReadableStream.pipe(pagesWritable);
+        // set up archiver
+        const archive1 = this.setUpArchiver();
+        const archive2 = this.setUpArchiver();
 
-    await streamToPromise(archive);
+        // WRITABLE
+        // read from pageReadableStream, then append each page to archiver
+        // pageReadableStream.pipe(pagesWritable) below will pipe the stream
+        const pagesWritable = new Writable({
+          objectMode: true,
+          async write(page, encoding, callback) {
+            try {
+              const revision = page.revision;
+
+              let markdownBody = 'This page does not have any content.';
+              if (revision != null) {
+                markdownBody = revision.body;
+              }
+
+              // write to zip
+              const pathNormalized = pathUtils.normalizePath(page.path);
+              archive1.append(markdownBody, { name: `${pathNormalized}.md` });
+              archive2.append(`COPIED\n${markdownBody}`, { name: `${pathNormalized}-copied.md` });
+            }
+            catch (err) {
+              logger.error('Error occurred while converting data to readable: ', err);
+              throw err;
+            }
+
+            callback();
+          },
+          async final(callback) {
+            // SECOND CALLBACK
+            // first uploadPart & update mui with part info
+            await self.crowi.fileUploadService.INVxUploadPartMultipartUpload(mui, archive1, async(err, data) => {
+              if (err != null) {
+                logger.error('Error occurred here:', err);
+                throw err;
+              }
+
+              const { ETag: eTag } = data;
+              const newPart = new Map([[1, eTag]]);
+
+              const muiUpdated = await MultipartUploadInfo.findOneAndUpdate({}, { uploadedParts: newPart }, { new: true });
+
+              // THIRD CALLBACK
+              await self.crowi.fileUploadService.INVxUploadPartMultipartUpload(muiUpdated, archive2, async(err, data) => {
+                if (err != null) {
+                  throw err;
+                }
+
+                const { ETag: eTag } = data;
+                const { uploadedParts } = mui;
+
+                uploadedParts.set(2, eTag);
+
+                const muiUpdated2 = await MultipartUploadInfo.findOneAndUpdate({}, { uploadedParts }, { new: true });
+
+                // FORTH CALLBACK
+                // complete upload
+                await self.crowi.fileUploadService.INVxCompleteMultipartUpload(muiUpdated2, async(err, data) => {
+                  if (err != null) {
+                    throw err;
+                  }
+
+                  // delete MultipartUploadInfo
+                  await MultipartUploadInfo.deleteMany();
+                  console.log('Multipart upload has completed successfully:', data);
+                });
+                // FORTH CALLBACK END
+
+              });
+              // THIRD CALLBACK END
+            });
+            // SECOND CALLBACK END
+
+            callback();
+          },
+        });
+        // WRITABLE END
+
+        pageReadableStream.pipe(pagesWritable);
+        await streamToPromise(archive1);
+        await streamToPromise(archive2);
+      });
+      // FIRST CALLBACK END
+    }
+    catch (err) {
+      logger.error('Error occurred while INVxCreateMultiPartUpload:', err);
+      throw err;
+    }
+
+    // note
+    // else { get offset and other info from MUI and getPageReadableStream(offset) -> uploadPart(other info from MUI) }
+    // BUT, if pages count < BATCH_SIZE(offset) then uploadPart(() => { CompleteMultipartUpload() })
+
   }
 
 }

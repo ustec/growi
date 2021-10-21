@@ -232,36 +232,93 @@ module.exports = function(crowi) {
 
 
   // method for INVESTIGATION
-  lib.INVxMultiPartUpload = async() => {
-    if (!this.getIsReadable()) {
-      throw new Error('AWS is not configured.');
+  lib.INVxCreateMultiPartUpload = async function(callback) {
+    if (!this.isValidUploadSettings()) {
+      throw new Error('AWS S3 is not configured.');
     }
 
     const s3 = S3Factory();
+    const awsConfig = getAwsConfig();
 
-    let uploadId;
+    const params = {
+      Bucket: awsConfig.bucket,
+      Key: 'bulk-export-test',
+      ContentType: 'application/zip',
+    };
+
     try {
-      s3.createMultipartUpload((err, data) => {
-        if (err != null) {
-          throw err;
-        }
-
-        console.log('Get uploadId from this data:', data);
-        s3.completeMultipartUpload((err, data) => {
-          if (err != null) {
-            throw err;
-          }
-
-          console.log('Multipart upload has completed successfully:', data);
-        });
-      });
+      // https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#createMultipartUpload-property
+      // TODO: set ACL to "authenticated-read"?
+      s3.createMultipartUpload(params, callback);
     }
     catch (err) {
       logger.error('Error occurred while createMultipartUpload:', err);
       throw err;
     }
+  };
 
-    return uploadId;
+  // mui: MultipartUploadInfo
+  // https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#uploadPart-property
+  lib.INVxUploadPartMultipartUpload = async function(mui, stream, callback) {
+    if (!this.isValidUploadSettings()) {
+      throw new Error('AWS S3 is not configured.');
+    }
+
+    const s3 = S3Factory();
+    const awsConfig = getAwsConfig();
+
+    const { key, uploadId, uploadedParts } = mui;
+
+
+    // increment partNumber
+    const partNumber = Array.from(uploadedParts.keys()).length + 1;
+    console.log('なにこれ', Array.from(uploadedParts.keys()), partNumber);
+
+    const contentLength = stream.pointer();
+
+    const params = {
+      Bucket: awsConfig.bucket,
+      Key: key,
+      Body: stream,
+      PartNumber: partNumber,
+      UploadId: uploadId,
+      ContentLength: contentLength,
+    };
+
+    s3.uploadPart(params, callback);
+  };
+
+  lib.INVxCompleteMultipartUpload = async function(mui, callback) {
+    if (!this.isValidUploadSettings()) {
+      throw new Error('AWS S3 is not configured.');
+    }
+
+    const s3 = S3Factory();
+    const awsConfig = getAwsConfig();
+
+    const { key, uploadId, uploadedParts } = mui;
+
+    const parts = [];
+
+    uploadedParts.keys().forEach((key) => {
+      parts.push({
+        ETag: uploadedParts.get(key),
+        PartNumber: key,
+      });
+    });
+
+    // set at least one part using uploadedParts
+    const params = {
+      Bucket: awsConfig.bucket,
+      Key: key,
+      UploadId: uploadId,
+      MultipartUpload: {
+        Parts: parts,
+      },
+    };
+
+    // https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#completeMultipartUpload-property
+    s3.completeMultipartUpload(params, callback);
   };
 
   return lib;
