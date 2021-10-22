@@ -285,7 +285,13 @@ module.exports = function(crowi) {
       ContentLength: contentLength,
     };
 
-    s3.uploadPart(params, callback);
+    try {
+      s3.uploadPart(params, callback);
+    }
+    catch (err) {
+      logger.error('Failed to uploadPart:', err);
+      throw err;
+    }
   };
 
   lib.INVxCompleteMultipartUpload = async function(mui, callback) {

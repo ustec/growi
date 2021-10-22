@@ -469,18 +469,26 @@ class ExportService {
             // first uploadPart & update mui with part info
             await self.crowi.fileUploadService.INVxUploadPartMultipartUpload(mui, archive1, async(err, data) => {
               if (err != null) {
-                logger.error('Error occurred here:', err);
+                logger.error('Failed to upload 1:', err);
                 throw err;
               }
 
               const { ETag: eTag } = data;
               const newPart = new Map([[1, eTag]]);
 
-              const muiUpdated = await MultipartUploadInfo.findOneAndUpdate({}, { uploadedParts: newPart }, { new: true });
+              let muiUpdated;
+              try {
+                muiUpdated = await MultipartUploadInfo.findOneAndUpdate({}, { uploadedParts: newPart }, { new: true });
+              }
+              catch (err) {
+                logger.error('Failed to update mui:', err);
+                throw err;
+              }
 
               // THIRD CALLBACK
               await self.crowi.fileUploadService.INVxUploadPartMultipartUpload(muiUpdated, archive2, async(err, data) => {
                 if (err != null) {
+                  logger.error('Failed to upload 2:', err);
                   throw err;
                 }
 
