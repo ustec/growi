@@ -55,7 +55,7 @@ services:
       - 9200:9200
     environment:
       - bootstrap.memory_lock=true
-      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - 'ES_JAVA_OPTS=-Xms256m -Xmx256m'
       - LOG4J_FORMAT_MSG_NO_LOOKUPS=true # CVE-2021-44228 mitigation for Elasticsearch <= 6.8.20/7.16.0
     ulimits:
       memlock:
@@ -92,7 +92,69 @@ services:
       - 3010:3000
     volumes:
       - /files/sqlite
+
+  # Monitoring
+  node_exporter:
+    image: prom/node-exporter:latest
+    ports:
+      - 9100:9100
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+
+  mongodb_exporter:
+    image: percona/mongodb_exporter:0.20
+    ports:
+      - 9216:9216
+    command:
+      '--mongodb.uri=mongodb://mongo:27017'
+
+  vmagent:
+    image: victoriametrics/vmagent
+    depends_on:
+      - victoriametrics
+    ports:
+      - 8429:8429
+    volumes:
+      - vmagentdata:/vmagentdata
+      - ./monitor/prometheus/:/prometheus
+    command:
+      - '--promscrape.config=./prometheus/prometheus.yml'
+      - '--remoteWrite.url=http://victoriametrics:8428/api/v1/write'
+    restart: always
+
+  victoriametrics:
+    image: victoriametrics/victoria-metrics
+    ports:
+      - 8428:8428
+    volumes:
+      - vmdata:/storage
+    command:
+      - '--storageDataPath=/storage'
+    restart: always
+
+  grafana:
+    image: grafana/grafana:8.5.4
+    environment:
+      - GF_SERVER_HTTP_PORT=3030
+      - GF_INSTALL_PLUGINS=digiapulssi-breadcrumb-panel,natel-discrete-panel
+    ports:
+      - 3030:3030
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./monitor/provisioning/:/etc/grafana/provisioning/
+
 volumes:
   node_modules:
   node_modules_app:
   node_modules_slackbot-proxy:
+  vmagentdata:
+  vmdata:
+  grafanadata:
