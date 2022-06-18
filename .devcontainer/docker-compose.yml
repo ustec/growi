@@ -110,11 +110,12 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
 
   mongodb_exporter:
-    image: percona/mongodb_exporter:0.20
+    image: percona/mongodb_exporter:0.32.0
     ports:
       - 9216:9216
     command:
-      '--mongodb.uri=mongodb://mongo:27017'
+      - '--mongodb.uri=mongodb://mongo:27017'
+      - '--collect-all'
 
   vmagent:
     image: victoriametrics/vmagent
