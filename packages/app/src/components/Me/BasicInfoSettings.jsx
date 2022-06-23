@@ -1,5 +1,5 @@
 
-import React, { Fragment } from 'react';
+import React, { useEffect } from 'react';
 
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import PersonalContainer from '~/client/services/PersonalContainer';
 import { toastSuccess, toastError } from '~/client/util/apiNotification';
 import { localeMetadatas } from '~/client/util/i18n';
+import { usePersonalSettingsInfo } from '~/stores/personal-settings';
 
 import { withUnstatedContainers } from '../UnstatedUtils';
 
@@ -19,14 +20,15 @@ class BasicInfoSettings extends React.Component {
     this.onClickSubmit = this.onClickSubmit.bind(this);
   }
 
-  async componentDidMount() {
-    try {
-      await this.props.personalContainer.retrievePersonalData();
-    }
-    catch (err) {
-      toastError(err);
-    }
-  }
+  // async componentDidMount() {
+  // this.props.syncPersonalSettingsInfo();
+  // try {
+  //   await this.props.personalContainer.retrievePersonalData();
+  // }
+  // catch (err) {
+  //   toastError(err);
+  // }
+  // }
 
   async onClickSubmit() {
     const { t, personalContainer } = this.props;
@@ -41,11 +43,13 @@ class BasicInfoSettings extends React.Component {
   }
 
   render() {
-    const { t, personalContainer } = this.props;
+    const { t, personalContainer, personalSettingsInfo } = this.props;
     const { registrationWhiteList } = personalContainer.state;
 
+    console.log({ personalSettingsInfo });
+
     return (
-      <Fragment>
+      <>
 
         <div className="form-group row">
           <label htmlFor="userForm[name]" className="text-left text-md-right col-md-3 col-form-label">{t('Name')}</label>
@@ -54,7 +58,8 @@ class BasicInfoSettings extends React.Component {
               className="form-control"
               type="text"
               name="userForm[name]"
-              defaultValue={personalContainer.state.name}
+              // defaultValue={personalContainer.state.name}
+              defaultValue={personalSettingsInfo.name}
               onChange={(e) => { personalContainer.changeName(e.target.value) }}
             />
           </div>
@@ -67,7 +72,8 @@ class BasicInfoSettings extends React.Component {
               className="form-control"
               type="text"
               name="userForm[email]"
-              defaultValue={personalContainer.state.email}
+              // defaultValue={personalContainer.state.email}
+              defaultValue={personalSettingsInfo.email}
               onChange={(e) => { personalContainer.changeEmail(e.target.value) }}
             />
             {registrationWhiteList.length !== 0 && (
@@ -90,7 +96,8 @@ class BasicInfoSettings extends React.Component {
                 id="radioEmailShow"
                 className="custom-control-input"
                 name="userForm[isEmailPublished]"
-                checked={personalContainer.state.isEmailPublished}
+                // checked={personalContainer.state.isEmailPublished}
+                checked={personalSettingsInfo.isEmailPublished}
                 onChange={() => { personalContainer.changeIsEmailPublished(true) }}
               />
               <label className="custom-control-label" htmlFor="radioEmailShow">{t('Show')}</label>
@@ -101,7 +108,8 @@ class BasicInfoSettings extends React.Component {
                 id="radioEmailHide"
                 className="custom-control-input"
                 name="userForm[isEmailPublished]"
-                checked={!personalContainer.state.isEmailPublished}
+                // checked={!personalContainer.state.isEmailPublished}
+                checked={!personalSettingsInfo.isEmailPublished}
                 onChange={() => { personalContainer.changeIsEmailPublished(false) }}
               />
               <label className="custom-control-label" htmlFor="radioEmailHide">{t('Hide')}</label>
@@ -120,7 +128,8 @@ class BasicInfoSettings extends React.Component {
                     id={`radioLang${meta.id}`}
                     className="custom-control-input"
                     name="userForm[lang]"
-                    checked={personalContainer.state.lang === meta.id}
+                    // checked={personalContainer.state.lang === meta.id}
+                    checked={personalSettingsInfo.lang === meta.id}
                     onChange={() => { personalContainer.changeLang(meta.id) }}
                   />
                   <label className="custom-control-label" htmlFor={`radioLang${meta.id}`}>{meta.displayName}</label>
@@ -135,9 +144,11 @@ class BasicInfoSettings extends React.Component {
             <input
               className="form-control"
               type="text"
-              key={personalContainer.state.slackMemberId}
+              // key={personalContainer.state.slackMemberId}
+              key={personalSettingsInfo.slackMemberId}
               name="userForm[slackMemberId]"
-              defaultValue={personalContainer.state.slackMemberId}
+              // defaultValue={personalContainer.state.slackMemberId}
+              defaultValue={personalSettingsInfo.slackMemberId}
               onChange={(e) => { personalContainer.changeSlackMemberId(e.target.value) }}
             />
           </div>
@@ -157,7 +168,7 @@ class BasicInfoSettings extends React.Component {
           </div>
         </div>
 
-      </Fragment>
+      </>
     );
   }
 
@@ -166,11 +177,30 @@ class BasicInfoSettings extends React.Component {
 BasicInfoSettings.propTypes = {
   t: PropTypes.func.isRequired, // i18next
   personalContainer: PropTypes.instanceOf(PersonalContainer).isRequired,
+  personalSettingsInfo: PropTypes.object,
+  mutatePersonalSettingsInfo: PropTypes.func,
 };
 
 const BasicInfoSettingsWrapperFC = (props) => {
   const { t } = useTranslation();
-  return <BasicInfoSettings t={t} {...props} />;
+  // const { data: personalSettingsInfo, mutate: mutatePersonalSettingsInfo, sync: syncPersonalSettingsInfo } = usePersonalSettingsInfo();
+  const swrResult = usePersonalSettingsInfo();
+
+
+  useEffect(() => {
+    // Sync only when getting personal settings data from DB
+    swrResult.sync();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [swrResult.personalSettingsDataFromDB]);
+
+  return (
+    <BasicInfoSettings
+      t={t}
+      personalSettingsInfo={swrResult.data || {}}
+      mutatePersonalSettingsInfo={swrResult.mutate}
+      {...props}
+    />
+  );
 };
 
 /**
