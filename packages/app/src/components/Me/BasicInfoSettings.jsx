@@ -4,6 +4,7 @@ import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 
+import AppContainer from '~/client/services/AppContainer';
 import PersonalContainer from '~/client/services/PersonalContainer';
 import { toastSuccess, toastError } from '~/client/util/apiNotification';
 import { localeMetadatas } from '~/client/util/i18n';
@@ -16,19 +17,8 @@ class BasicInfoSettings extends React.Component {
 
   constructor() {
     super();
-
     this.onClickSubmit = this.onClickSubmit.bind(this);
   }
-
-  // async componentDidMount() {
-  // this.props.syncPersonalSettingsInfo();
-  // try {
-  //   await this.props.personalContainer.retrievePersonalData();
-  // }
-  // catch (err) {
-  //   toastError(err);
-  // }
-  // }
 
   async onClickSubmit() {
     const { t, personalContainer } = this.props;
@@ -44,9 +34,9 @@ class BasicInfoSettings extends React.Component {
 
   render() {
     const {
-      t, personalContainer, personalSettingsInfo, mutatePersonalSettingsInfo,
+      t, appContainer, personalSettingsInfo, mutatePersonalSettingsInfo, error,
     } = this.props;
-    const { registrationWhiteList } = personalContainer.state;
+    const { registrationWhiteList } = appContainer.getConfig();
 
 
     return (
@@ -155,7 +145,7 @@ class BasicInfoSettings extends React.Component {
               type="button"
               className="btn btn-primary"
               onClick={this.onClickSubmit}
-              disabled={personalContainer.state.retrieveError != null}
+              disabled={error != null}
             >
               {t('Update')}
             </button>
@@ -170,9 +160,11 @@ class BasicInfoSettings extends React.Component {
 
 BasicInfoSettings.propTypes = {
   t: PropTypes.func.isRequired, // i18next
+  appContainer: PropTypes.instanceOf(AppContainer).isRequired,
   personalContainer: PropTypes.instanceOf(PersonalContainer).isRequired,
   personalSettingsInfo: PropTypes.object,
   mutatePersonalSettingsInfo: PropTypes.func,
+  error: PropTypes.object,
 };
 
 const BasicInfoSettingsWrapperFC = (props) => {
@@ -192,6 +184,7 @@ const BasicInfoSettingsWrapperFC = (props) => {
       t={t}
       personalSettingsInfo={swrResult.data || {}}
       mutatePersonalSettingsInfo={swrResult.mutate}
+      error={swrResult.error}
       {...props}
     />
   );
@@ -200,6 +193,6 @@ const BasicInfoSettingsWrapperFC = (props) => {
 /**
  * Wrapper component for using unstated
  */
-const BasicInfoSettingsWrapper = withUnstatedContainers(BasicInfoSettingsWrapperFC, [PersonalContainer]);
+const BasicInfoSettingsWrapper = withUnstatedContainers(BasicInfoSettingsWrapperFC, [AppContainer, PersonalContainer]);
 
 export default BasicInfoSettingsWrapper;
