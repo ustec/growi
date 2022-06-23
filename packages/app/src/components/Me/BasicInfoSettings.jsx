@@ -43,10 +43,11 @@ class BasicInfoSettings extends React.Component {
   }
 
   render() {
-    const { t, personalContainer, personalSettingsInfo } = this.props;
+    const {
+      t, personalContainer, personalSettingsInfo, mutatePersonalSettingsInfo,
+    } = this.props;
     const { registrationWhiteList } = personalContainer.state;
 
-    console.log({ personalSettingsInfo });
 
     return (
       <>
@@ -58,9 +59,8 @@ class BasicInfoSettings extends React.Component {
               className="form-control"
               type="text"
               name="userForm[name]"
-              // defaultValue={personalContainer.state.name}
               defaultValue={personalSettingsInfo.name}
-              onChange={(e) => { personalContainer.changeName(e.target.value) }}
+              onChange={(e) => { mutatePersonalSettingsInfo({ ...personalSettingsInfo, name: e.target.value }) }}
             />
           </div>
         </div>
@@ -72,9 +72,8 @@ class BasicInfoSettings extends React.Component {
               className="form-control"
               type="text"
               name="userForm[email]"
-              // defaultValue={personalContainer.state.email}
               defaultValue={personalSettingsInfo.email}
-              onChange={(e) => { personalContainer.changeEmail(e.target.value) }}
+              onChange={(e) => { mutatePersonalSettingsInfo({ ...personalSettingsInfo, email: e.target.value }) }}
             />
             {registrationWhiteList.length !== 0 && (
               <div className="form-text text-muted">
@@ -96,9 +95,8 @@ class BasicInfoSettings extends React.Component {
                 id="radioEmailShow"
                 className="custom-control-input"
                 name="userForm[isEmailPublished]"
-                // checked={personalContainer.state.isEmailPublished}
                 checked={personalSettingsInfo.isEmailPublished}
-                onChange={() => { personalContainer.changeIsEmailPublished(true) }}
+                onChange={() => mutatePersonalSettingsInfo({ ...personalSettingsInfo, isEmailPublished: true })}
               />
               <label className="custom-control-label" htmlFor="radioEmailShow">{t('Show')}</label>
             </div>
@@ -108,9 +106,8 @@ class BasicInfoSettings extends React.Component {
                 id="radioEmailHide"
                 className="custom-control-input"
                 name="userForm[isEmailPublished]"
-                // checked={!personalContainer.state.isEmailPublished}
                 checked={!personalSettingsInfo.isEmailPublished}
-                onChange={() => { personalContainer.changeIsEmailPublished(false) }}
+                onChange={() => mutatePersonalSettingsInfo({ ...personalSettingsInfo, isEmailPublished: false })}
               />
               <label className="custom-control-label" htmlFor="radioEmailHide">{t('Hide')}</label>
             </div>
@@ -128,9 +125,8 @@ class BasicInfoSettings extends React.Component {
                     id={`radioLang${meta.id}`}
                     className="custom-control-input"
                     name="userForm[lang]"
-                    // checked={personalContainer.state.lang === meta.id}
                     checked={personalSettingsInfo.lang === meta.id}
-                    onChange={() => { personalContainer.changeLang(meta.id) }}
+                    onChange={() => { mutatePersonalSettingsInfo({ ...personalSettingsInfo, lang: meta.id }) }}
                   />
                   <label className="custom-control-label" htmlFor={`radioLang${meta.id}`}>{meta.displayName}</label>
                 </div>
@@ -144,12 +140,10 @@ class BasicInfoSettings extends React.Component {
             <input
               className="form-control"
               type="text"
-              // key={personalContainer.state.slackMemberId}
               key={personalSettingsInfo.slackMemberId}
               name="userForm[slackMemberId]"
-              // defaultValue={personalContainer.state.slackMemberId}
               defaultValue={personalSettingsInfo.slackMemberId}
-              onChange={(e) => { personalContainer.changeSlackMemberId(e.target.value) }}
+              onChange={(e) => { mutatePersonalSettingsInfo({ ...personalSettingsInfo, slackMemberId: e.target.value }) }}
             />
           </div>
         </div>
