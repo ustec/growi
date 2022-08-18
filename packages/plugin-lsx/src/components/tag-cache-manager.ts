@@ -1,6 +1,6 @@
 import { TagCacheManager } from '@growi/core';
 
-import { LsxContext } from './lsx-context';
+import { LsxContext } from './lsx-context.js';
 
 const LSX_STATE_CACHE_NS = 'lsx-state-cache';
 

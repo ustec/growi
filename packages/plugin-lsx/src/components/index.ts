@@ -1,1 +1,1 @@
-export { Lsx } from './Lsx';
+export { Lsx } from './Lsx.jsx';

@@ -4,7 +4,7 @@ const loginRequiredFallback = (req, res) => {
 };
 
 module.exports = (crowi, app) => {
-  const lsx = require('./lsx')(crowi, app);
+  const lsx = require('./lsx.cjs')(crowi, app);
 
   const loginRequired = crowi.require('../middlewares/login-required')(crowi, true, loginRequiredFallback);
   const accessTokenParser = crowi.require('../middlewares/access-token-parser')(crowi);

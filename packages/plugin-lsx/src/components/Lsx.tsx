@@ -5,12 +5,12 @@ import React, {
 import * as url from 'url';
 
 import { IPage, pathUtils } from '@growi/core';
-import axios from 'axios';
+import { default as axios } from 'axios';
 
-import { LsxListView } from './LsxPageList/LsxListView';
-import { PageNode } from './PageNode';
-import { LsxContext } from './lsx-context';
-import { getInstance as getTagCacheManager } from './tag-cache-manager';
+import { LsxListView } from './LsxPageList/LsxListView.jsx';
+import { PageNode } from './PageNode.js';
+import { LsxContext } from './lsx-context.js';
+import { getInstance as getTagCacheManager } from './tag-cache-manager.js';
 
 import styles from './Lsx.module.scss';
 
