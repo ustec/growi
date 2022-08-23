@@ -44,8 +44,13 @@ const ImageCropModal: FC<Props> = (props: Props) => {
 
   const [imageRef, setImageRef] = useState<HTMLImageElement>();
   const [cropOptions, setCropOtions] = useState<CropOptions>(null);
+  const [isImageSvg, setIsImageSvg] = useState<boolean>(false);
   const { t } = useTranslation();
   const reset = useCallback(() => {
+    // Regex to get mime type from base64
+    // https://regex101.com/r/hNSTds/1
+    const mimeTypeRE = /[^:]\w+\/[\w\-+\d.]+(?=;|,)/;
+
     if (imageRef) {
       const size = Math.min(imageRef.width, imageRef.height);
       setCropOtions({
@@ -56,6 +61,11 @@ const ImageCropModal: FC<Props> = (props: Props) => {
         width: size,
         height: size,
       });
+
+      const match = imageRef.src.match(mimeTypeRE);
+      if (match != null) {
+        setIsImageSvg(match[0] === 'image/svg+xml');
+      }
     }
   }, [imageRef]);
 
@@ -63,6 +73,7 @@ const ImageCropModal: FC<Props> = (props: Props) => {
     document.body.style.position = 'static';
     reset();
   }, [reset]);
+
 
   const onImageLoaded = (image) => {
     setImageRef(image);
