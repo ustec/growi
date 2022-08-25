@@ -36,6 +36,9 @@ type Props = {
   onCropCompleted: (res: any) => void,
   isCircular: boolean,
 }
+type SvgContainerProps = {
+  src: string | ArrayBuffer | null,
+}
 const ImageCropModal: FC<Props> = (props: Props) => {
 
   const {
@@ -112,13 +115,23 @@ const ImageCropModal: FC<Props> = (props: Props) => {
     }
   };
 
+  const SVGContainer = (props: SvgContainerProps) => {
+    const { src } = props;
+    if (src != null) {
+      return (<img src={src} />);
+    }
+  };
+
   return (
     <Modal isOpen={isShow} toggle={onModalClose}>
       <ModalHeader tag="h4" toggle={onModalClose} className="bg-info text-light">
         {t('crop_image_modal.image_crop')}
       </ModalHeader>
       <ModalBody className="my-4">
-        <ReactCrop src={src} crop={cropOptions} onImageLoaded={onImageLoaded} onChange={onCropChange} circularCrop={isCircular} />
+        { isImageSvg
+          ? (<SVGContainer src={src} />)
+          : (<ReactCrop src={src} crop={cropOptions} onImageLoaded={onImageLoaded} onChange={onCropChange} circularCrop={isCircular} />)
+        }
       </ModalBody>
       <ModalFooter>
         <button type="button" className="btn btn-outline-danger rounded-pill mr-auto" onClick={reset}>
