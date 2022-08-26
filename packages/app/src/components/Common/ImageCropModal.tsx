@@ -35,25 +35,20 @@ type Props = {
   onModalClose: () => void,
   onCropCompleted: (res: any) => void,
   isCircular: boolean,
+  isProfilePicture: boolean
 }
-type SvgContainerProps = {
-  src: string | ArrayBuffer | null,
-}
+
 const ImageCropModal: FC<Props> = (props: Props) => {
 
   const {
-    isShow, src, onModalClose, onCropCompleted, isCircular,
+    isShow, src, onModalClose, onCropCompleted, isCircular, isProfilePicture,
   } = props;
 
   const [imageRef, setImageRef] = useState<HTMLImageElement>();
   const [cropOptions, setCropOtions] = useState<CropOptions>(null);
-  const [isImageSvg, setIsImageSvg] = useState<boolean>(false);
+  const [isCropImage, setIsCropImage] = useState<boolean>(true);
   const { t } = useTranslation();
   const reset = useCallback(() => {
-    // Regex to get mime type from base64
-    // https://regex101.com/r/hNSTds/1
-    const mimeTypeRE = /[^:]\w+\/[\w\-+\d.]+(?=;|,)/;
-
     if (imageRef) {
       const size = Math.min(imageRef.width, imageRef.height);
       setCropOtions({
@@ -64,11 +59,6 @@ const ImageCropModal: FC<Props> = (props: Props) => {
         width: size,
         height: size,
       });
-
-      const match = imageRef.src.match(mimeTypeRE);
-      if (match != null) {
-        setIsImageSvg(match[0] === 'image/svg+xml');
-      }
     }
   }, [imageRef]);
 
@@ -107,20 +97,26 @@ const ImageCropModal: FC<Props> = (props: Props) => {
     }
   };
 
+  // Convert base64 Image to blob
+  const convertBase64ToBlob = async(base64Image: string) => {
+    const parts = base64Image.split(';base64,');
+    const imageType = parts[0].split(':')[1];
+    const decodedData = window.atob(parts[1]);
+    const uInt8Array = new Uint8Array(decodedData.length);
+    for (let i = 0; i < decodedData.length; ++i) {
+      uInt8Array[i] = decodedData.charCodeAt(i);
+    }
+    return new Blob([uInt8Array], { type: imageType });
+  };
+
   const crop = async() => {
     // crop immages
     if (imageRef && cropOptions?.width && cropOptions.height) {
-      const result = await getCroppedImg(imageRef, cropOptions);
+      const result = isCropImage ? await getCroppedImg(imageRef, cropOptions) : await convertBase64ToBlob(imageRef.src);
       onCropCompleted(result);
     }
   };
 
-  const SVGContainer = (props: SvgContainerProps) => {
-    const { src } = props;
-    if (src != null) {
-      return (<img src={src} />);
-    }
-  };
 
   return (
     <Modal isOpen={isShow} toggle={onModalClose}>
@@ -128,15 +124,31 @@ const ImageCropModal: FC<Props> = (props: Props) => {
         {t('crop_image_modal.image_crop')}
       </ModalHeader>
       <ModalBody className="my-4">
-        { isImageSvg
-          ? (<SVGContainer src={src} />)
-          : (<ReactCrop src={src} crop={cropOptions} onImageLoaded={onImageLoaded} onChange={onCropChange} circularCrop={isCircular} />)
+        {
+          isCropImage
+            ? (<ReactCrop src={src} crop={cropOptions} onImageLoaded={onImageLoaded} onChange={onCropChange} circularCrop={isCircular} />)
+            : (<img style={{ maxWidth: 450 }} src={imageRef?.src} />)
         }
       </ModalBody>
       <ModalFooter>
-        <button type="button" className="btn btn-outline-danger rounded-pill mr-auto" onClick={reset}>
+        <button type="button" className="btn btn-outline-danger rounded-pill" onClick={reset}>
           {t('crop_image_modal.reset')}
         </button>
+        <div className="mr-auto">
+          <div className="custom-control custom-switch ">
+            <input
+              id="cropImageOption"
+              className="custom-control-input mr-auto"
+              type="checkbox"
+              checked={isCropImage}
+              onChange={() => { setIsCropImage(!isCropImage) }}
+              disabled={isProfilePicture}
+            />
+            <label className="custom-control-label" htmlFor="cropImageOption">
+              { t('Crop Image') }
+            </label>
+          </div>
+        </div>
         <button type="button" className="btn btn-outline-secondary rounded-pill mr-2" onClick={onModalClose}>
           {t('crop_image_modal.cancel')}
         </button>
@@ -144,6 +156,13 @@ const ImageCropModal: FC<Props> = (props: Props) => {
           {t('crop_image_modal.crop')}
         </button>
       </ModalFooter>
+      {isCropImage ? (
+        <ModalFooter className="border-0 pt-0">
+          <p className="text-warning mr-auto">
+            {t('Image will saved as PNG')}
+          </p>
+        </ModalFooter>
+      ) : <></>}
     </Modal>
   );
 };

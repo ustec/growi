@@ -174,6 +174,7 @@ const CustomizeLogoSetting = (): JSX.Element => {
         onModalClose={() => setIsImageCropModalShow(false)}
         onCropCompleted={onCropCompleted}
         isCircular={false}
+        isProfilePicture={false}
       />
     </React.Fragment>
   );
