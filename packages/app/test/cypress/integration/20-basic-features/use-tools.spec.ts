@@ -265,6 +265,7 @@ context('Tag Oprations', () =>{
     });
 
     cy.visit(`/${newPageName}`);
+    cy.getByTestid('tag-list').should('be.visible');
     cy.screenshot(`${ssPrefix}4-new-page-name-applied`, {capture: 'viewport'});
   });
 
